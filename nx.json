@@ -1,0 +1,28 @@
+{
+  "npmScope": "realtime-form",
+  "implicitDependencies": {
+    "angular.json": "*",
+    "package.json": {
+      "dependencies": "*",
+      "devDependencies": "*"
+    },
+    "tsconfig.json": "*",
+    "tslint.json": "*",
+    "nx.json": "*"
+  },
+  "projects": {
+    "realtime-form": {
+      "tags": []
+    },
+    "realtime-form-e2e": {
+      "tags": [],
+      "implicitDependencies": ["realtime-form"]
+    },
+    "api": {
+      "tags": []
+    },
+    "api-interfaces": {
+      "tags": []
+    }
+  }
+}
