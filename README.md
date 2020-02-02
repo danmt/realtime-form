@@ -1,84 +1,549 @@
-# RealtimeForm
+# Multiple Users using the same Form in Real Time. Nx, NestJs and Angular
 
-This project was generated using [Nx](https://nx.dev).
+In this article I wanted to explore something Ive been asked to build several times for different use cases. With distributed and remote teams, real time cooperation is key for success. Whenever we hear about Real Time application we always see the same example, a Chat. Although chats and cool and important, there's a simpler thing that can help teams maximize cooperation, forms that can be editted by multiple users **AT THE SAME TIME**.
 
-<p align="center"><img src="https://raw.githubusercontent.com/nrwl/nx/master/nx-logo.png" width="450"></p>
+It seems challenging, and of course, depending on the use case it can be harder and more _expensive_. It can get expensive simply because it means more data being sent back and forward. If your application is running on a VPS or a dedicated server you may be able to do this without any extra expenses, but if you are doing serverless this means more money you'll spend at the end of the month.
 
-🔎 **Nx is a set of Extensible Dev Tools for Monorepos.**
+In a traditional form implementation, every client has its own state and it sends a request only when the form is submitted. In this case, things are more complex, every time a client updates the form, all the other clients should receive this information. If you are planning to use this feature in apps with just a few users, its Okay, but if you are planning to have 1,000 users concurrently changing the form, things dramatically change.
 
-## Quick Start & Documentation
+> In this case I'm gonna focus on doing a very simple implementation to get you started, this is by no means a production ready application.
 
-[Nx Documentation](https://nx.dev/angular)
+## The Problem
 
-[10-minute video showing all Nx features](https://nx.dev/angular/getting-started/what-is-nx)
+Let's say you have multiple users that have to work together towards a goal, you want to reduce friction as much as possible. Having a mechanism to work on the same task together in real time can be really useful.
 
-[Interactive Tutorial](https://nx.dev/angular/tutorial/01-create-application)
+## The Solution
 
-## Adding capabilities to your workspace
+There should be a service responsible of tracking the current state of the task and sending updates to all the connected clients. The Web Client that will be used by the clients, should display the connected clients and a form that can be changed by user interaction or by updates coming from the service.
 
-Nx supports many plugins which add capabilities for developing different types of applications and different tools.
+Since there's big chance of concurrency, we have to choose a strategy that helps us with that. I'm personally a fan of Redux, so I based my implementation on it but adjusted it according to my needs. Since this is a very small app, I used pure RxJs for my state management implementation. The actions that can occur are:
 
-These capabilities include generating applications, libraries, etc as well as the devtools to test, and build projects as well.
+- Init: It sets the initial state of the web client, its triggered when each client loads.
+- ClientConnected: Everytime a client connects to the service, all the clients receive an updated list of the currently connected clients.
+- Data: Whenever a client is connected, the service responds with the current form state.
+- PatchValue: When a client updates the form by directly interacting with it, it sends the changes to the service.
+- ValuePatched: When the service recevies a change to the state, it broadcasts it to all the other clients.
 
-Below are some plugins which you can add to your workspace:
+For this sample the form data is very simple and it only consists of a title and description, both of type string.
 
-- [Angular](https://angular.io)
-  - `ng add @nrwl/angular`
-- [React](https://reactjs.org)
-  - `ng add @nrwl/react`
-- Web (no framework frontends)
-  - `ng add @nrwl/web`
-- [Nest](https://nestjs.com)
-  - `ng add @nrwl/nest`
-- [Express](https://expressjs.com)
-  - `ng add @nrwl/express`
-- [Node](https://nodejs.org)
-  - `ng add @nrwl/node`
+## Implementation
 
-## Generate an application
+First thing is to choose the technologies we want to use. I'm a proud Angular Developer, so I choose to use Angular for the Web Client. Since NestJs is so cool, I decided to use it for the service responsible of synchronization. Finally since the Web Client and the service are going to be communicating in real time, Nx can be really helpful to reduce duplication and ensure the messages passing through are type safe using shared interfaces.
 
-Run `ng g @nrwl/angular:app my-app` to generate an application.
+> NOTE: For the Web Client you can use any JS framework or even plain Javascript. Same thing with the service, you can use Node or what ever you want as long as you have a Socket.IO implementation. I used Nx just because I like it but you can also skip that part.
 
-> You can use any of the plugins above to generate applications as well.
+We'll start by generating the Nx workspace.
 
-When using Nx, you can create multiple applications and libraries in the same workspace.
+- Run the command `npx create-nx-workspace@latest realtime-form`
+- Choose `angular-nest` workspace in the prompt options
+- Type `web-client` as the Application name
+- Select your preferred stylesheet format (I always use SASS)
+- Go to the `realtime-form` directory
 
-## Generate a library
+One of the cool things of using Nx with NestJs and Angular is the possibility to share things between them. Let's take advantage of it and create our Form's state interface and Action types enum.
 
-Run `ng g @nrwl/angular:lib my-lib` to generate a library.
+Go to `/libs/api-interfaces/src/lib/api-interfaces.ts` and change its content to this:
 
-> You can also use any of the plugins above to generate libraries as well.
+```typescript
+export enum ActionTypes {
+  Data = '[Socket] Data',
+  ClientConnected = '[Socket] Client Connected',
+  ValuePatched = '[Socket] Value Patched',
+  PatchValue = '[Form] Patch Value',
+  Init = '[Init] Init'
+}
 
-Libraries are sharable across libraries and applications. They can be imported from `@realtime-form/mylib`.
+export interface FormData {
+  title: string;
+  description: string;
+}
+```
 
-## Development server
+Now we are able to use them from the service and the web client, since its shared it works as a contract between the two of them.
 
-Run `ng serve my-app` for a dev server. Navigate to http://localhost:4200/. The app will automatically reload if you change any of the source files.
+We're going to start with the service:
 
-## Code scaffolding
+- Go to the directory `/apps/api/src/app`
+- Create a new directory called `events` and move to that directory
+- Create a file named `events.gateway.ts`
+- Create a file named `events.module.ts`
 
-Run `ng g component my-component --project=my-app` to generate a new component.
+And next you just have to write the new file's content.
 
-## Build
+Go to `/apps/api/src/app/events/events.gateway.ts`:
 
-Run `ng build my-app` to build the project. The build artifacts will be stored in the `dist/` directory. Use the `--prod` flag for a production build.
+```typescript
+import {
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { Logger } from '@nestjs/common';
 
-## Running unit tests
+import { ActionTypes, FormData } from '@realtime-form/data';
 
-Run `ng test my-app` to execute the unit tests via [Jest](https://jestjs.io).
+@WebSocketGateway()
+export class EventsGateway {
+  connectedClients = [];
+  data = {};
+  @WebSocketServer()
+  server: Server;
+  private logger: Logger = new Logger('EventsGateway');
 
-Run `nx affected:test` to execute the unit tests affected by a change.
+  handleConnection(client: Socket) {
+    this.connectedClients = [...this.connectedClients, client.id];
+    this.logger.log(
+      `Client connected: ${client.id} - ${this.connectedClients.length} connected clients.`
+    );
+    this.server.emit(ActionTypes.ClientConnected, this.connectedClients);
+    client.emit(ActionTypes.Data, this.data);
+  }
 
-## Running end-to-end tests
+  handleDisconnect(client: Socket) {
+    this.connectedClients = this.connectedClients.filter(
+      connectedClient => connectedClient !== client.id
+    );
+    this.logger.log(
+      `Client disconnected: ${client.id} - ${this.connectedClients.length} connected clients.`
+    );
+    this.server.emit(ActionTypes.ClientConnected, this.connectedClients);
+  }
 
-Run `ng e2e my-app` to execute the end-to-end tests via [Cypress](https://www.cypress.io).
+  @SubscribeMessage(ActionTypes.PatchValue)
+  patchValue(client: Socket, payload: Partial<FormData>) {
+    this.data = { ...this.data, ...payload };
+    this.logger.log(`Patch value: ${JSON.stringify(payload)}.`);
+    client.broadcast.emit(ActionTypes.ValuePatched, payload);
+  }
+}
+```
 
-Run `nx affected:e2e` to execute the end-to-end tests affected by a change.
+If you are scratching your head with that code snippet, don't worry, we are trusting NestJs to do all the heavy lifting. You can think of each method as the response to an event; connection, disconnection and patch value.
 
-## Understand your workspace
+- Connection: Update the list of connected clients, log to the service the event ocurred, emit the new connectedClients list to all the currently connected clients and emit to the client the current state of the form.
+- Disconnection: Update the list of connected clients, log to the service the event ocurred, emit the new connectedClients list to all the currently connected clients.
+- PatchValue: Update the current state of the form, log to the service the event ocurred, broadcast the new state to all the currently connected clients.
 
-Run `nx dep-graph` to see a diagram of the dependencies of your projects.
+> NOTE: The difference between this.server.emit and client.broadcast.emit, is that the first sends the message to all the clients while the second sends the message to all _BUT the sender_.
 
-## Further help
+Now lets update the `/apps/api/src/app/events/events.module.ts` file:
 
-Visit the [Nx Documentation](https://nx.dev/angular) to learn more.
+```typescript
+import { Module } from '@nestjs/common';
+import { EventsGateway } from './events.gateway';
+
+@Module({
+  providers: [EventsGateway]
+})
+export class EventsModule {}
+```
+
+And the `/apps/api/src/app/app.module.ts` file:
+
+```typescript
+import { Module } from '@nestjs/common';
+import { EventsModule } from './events/events.module';
+
+@Module({
+  imports: [EventsModule]
+})
+export class AppModule {}
+```
+
+I also removed the `AppController` and `AppService` files.
+
+Now it's time to get started with the web client, go to `apps/web-client/src/app/app.component.html`:
+
+```html
+<header>
+  <h1>Realtime Form</h1>
+</header>
+
+<main>
+  <form [formGroup]="form">
+    <fieldset>
+      <label class="form-control">
+        <span>Title: </span>
+        <input formControlName="title" />
+      </label>
+
+      <label class="form-control">
+        <span>Description: </span>
+        <textarea formControlName="description" rows="5"></textarea>
+      </label>
+    </fieldset>
+  </form>
+
+  <ng-container *ngIf="connectedClients$ | async as clients">
+    <h2>Clients ({{ clients.length }})</h2>
+    <ul>
+      <li *ngFor="let client of clients">{{ client }}</li>
+    </ul>
+  </ng-container>
+</main>
+```
+
+Next go to `apps/web-client/src/app/app.component.ts`:
+
+```typescript
+import { Component, OnInit } from '@angular/core';
+import { BehaviorSubject, merge } from 'rxjs';
+import { scan, map } from 'rxjs/operators';
+import { FormBuilder } from '@angular/forms';
+import { Socket } from 'ngx-socket-io';
+
+import { ActionTypes, FormData } from '@realtime-form/api-interfaces';
+import { State, reducer } from './core/state';
+import {
+  ClientConnected,
+  Data,
+  ValuePatched,
+  Action,
+  Init
+} from './core/actions';
+import {
+  getPatchValueEffect,
+  getValuePatchedEffect,
+  getFormChangesEffect
+} from './core/effects';
+
+@Component({
+  selector: 'realtime-form-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.scss']
+})
+export class AppComponent implements OnInit {
+  // 1: Action dispatcher
+  private dispatcher = new BehaviorSubject<Action>(new Init());
+  actions$ = this.dispatcher.asObservable();
+  // 2: State stream
+  store$ = this.actions$.pipe(
+    scan((state: State, action: Action) => reducer(state, action))
+  );
+  // 3: Define all the selectors
+  connectedClients$ = this.store$.pipe(
+    map((state: State) => state.connectedClients)
+  );
+  data$ = this.store$.pipe(map((state: State) => state.data));
+  title$ = this.data$.pipe(map((state: Partial<FormData>) => state.title));
+  description$ = this.data$.pipe(
+    map((state: Partial<FormData>) => state.description)
+  );
+
+  // 4: Initialize the form
+  form = this.fb.group({
+    title: [''],
+    description: ['']
+  });
+
+  constructor(private socket: Socket, private fb: FormBuilder) {}
+
+  ngOnInit() {
+    // 5: Connect to all the socket events
+    this.socket.on(ActionTypes.ClientConnected, (payload: string[]) => {
+      this.dispatcher.next(new ClientConnected(payload));
+    });
+
+    this.socket.on(ActionTypes.Data, (payload: Partial<FormData>) => {
+      this.dispatcher.next(new Data(payload));
+    });
+
+    this.socket.on(ActionTypes.ValuePatched, (payload: Partial<FormData>) => {
+      this.dispatcher.next(new ValuePatched(payload));
+    });
+
+    // 6: Subscribe to all the effects
+    merge(
+      getPatchValueEffect(this.socket, this.actions$),
+      getValuePatchedEffect(this.form, this.actions$),
+      getFormChangesEffect(this.form, this.dispatcher)
+    ).subscribe();
+  }
+}
+```
+
+Let's go through each of the things I just did right there:
+
+### 1: Action dispatcher
+
+I start by creating an action dispatcher and an observable from the stream of actions going through, I use RxJs BehaviorSubject with an initial action that looks like this:
+
+```typescript
+// apps/web-client/src/app/core/actions/init.action.ts
+import { ActionTypes } from '@realtime-form/api-interfaces';
+
+export class Init {
+  type = ActionTypes.Init;
+  payload = null;
+}
+```
+
+I also created an `Action` type inside a barrel import to make it easier to use:
+
+```typescript
+// apps/web-client/src/app/core/actions/index.ts
+import { Init } from './init.action';
+
+export type Action = Init;
+export { Init };
+```
+
+### 2: State stream
+
+By using the scan operator we can take every emission of an observable, keep an internal state that gets updated by the return of its callback. With a reducer function that takes a state and action, and returns a state in a inmutable way we can have a stream of the current state in a safer way.
+
+I created a reducer that looks like this:
+
+```typescript
+// apps/web-client/src/app/core/state/state.reducer.ts
+import { ActionTypes } from '@realtime-form/api-interfaces';
+import { State } from './state.interface';
+import { Action } from '../actions';
+import { initialState } from './initial-state.const';
+
+export const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case ActionTypes.Init:
+      return { ...initialState };
+    case ActionTypes.ClientConnected:
+      return {
+        ...state,
+        connectedClients: action.payload
+      };
+    case ActionTypes.Data:
+      return { ...state, data: action.payload };
+    case ActionTypes.PatchValue:
+      return { ...state, data: { ...state.data, ...action.payload } };
+    default:
+      return { ...state };
+  }
+};
+```
+
+A brief description of the actions:
+
+- Init: Set the state to the `initialState` const.
+- ClientConnected: Update the connectedClients in the state with the updated list.
+- Data: Set the data of the state to the value returned upon connection.
+- PatchValue: Patch the data with the changes from the payload.
+
+The `State` interface looks like this:
+
+```typescript
+// apps/web-client/src/app/core/state/state.interface.ts
+import { FormData } from '@realtime-form/api-interfaces';
+
+export interface State {
+  connectedClients: string[];
+  data: Partial<FormData>;
+}
+```
+
+The `initialState` const looks like this:
+
+```typescript
+// apps/web-client/src/app/core/state/initial-state.const.ts
+import { State } from './state.interface';
+
+export const initialState = {
+  connectedClients: [],
+  data: {}
+} as State;
+```
+
+I also created a barrel import here, I kinda love those.
+
+```typescript
+export { initialState } from './initial-state.const';
+export { State } from './state.interface';
+export { reducer } from './state.reducer';
+```
+
+### 3: Define all the selectors
+
+In order to make it easy to access the values in the store, I created an extra set of observables that are basically mapping the state to sub states, it works like a projection.
+
+### 4: Initialize the form
+
+I just created a very **VERY** simple form using ReactiveForms, if you want to learn more about them you can take a look at my ReactiveForms series.
+
+### 5: Connect to all the socket events
+
+As we just saw, there are three events that can be emitted by our service, in this step we are listening to those events and responding accordingly. To make it cleaner I created some action creator classes.
+
+```typescript
+// apps/web-client/src/app/core/actions/client-connected.action.ts
+import { ActionTypes } from '@realtime-form/api-interfaces';
+
+export class ClientConnected {
+  type = ActionTypes.ClientConnected;
+
+  constructor(public payload: string[]) {}
+}
+```
+
+```typescript
+// apps/web-client/src/app/core/actions/data.action.ts
+import { ActionTypes, FormData } from '@realtime-form/api-interfaces';
+
+export class Data {
+  type = ActionTypes.Data;
+
+  constructor(public payload: Partial<FormData>) {}
+}
+```
+
+```typescript
+// apps/web-client/src/app/core/actions/value-patched.action.ts
+import { ActionTypes, FormData } from '@realtime-form/api-interfaces';
+
+export class ValuePatched {
+  type = ActionTypes.ValuePatched;
+
+  constructor(public payload: Partial<FormData>) {}
+}
+```
+
+And do not forget to update the barrel import
+
+```typescript
+// apps/web-client/src/app/core/actions/index.ts
+import { Init } from './init.action';
+import { Data } from './data.action';
+import { ClientConnected } from './client-connected.action';
+import { ValuePatched } from './value-patched.action';
+
+export type Action = Init | Data | ClientConnected | ValuePatched;
+export { Init, Data, ClientConnected, ValuePatched };
+```
+
+### 6: Subscribe to all the effects
+
+The only thing left are the side effects. Let's go through each:
+
+When the user updates the form, the changes have to be broadcasted to all the other clients, for this we need to emit to the service. We can achieve that doing this:
+
+```typescript
+// apps/web-client/src/app/core/effects/patch-value.effect.ts
+import { Action } from '../actions';
+import { Observable, asyncScheduler } from 'rxjs';
+import { observeOn, filter, tap } from 'rxjs/operators';
+import { ActionTypes } from '@realtime-form/api-interfaces';
+import { Socket } from 'ngx-socket-io';
+
+export const getPatchValueEffect = (
+  socket: Socket,
+  actions: Observable<Action>
+) => {
+  return actions.pipe(
+    observeOn(asyncScheduler),
+    filter(action => action.type === ActionTypes.PatchValue),
+    tap(action => socket.emit(ActionTypes.PatchValue, action.payload))
+  );
+};
+```
+
+> NOTE: I use the `asyncScheduler` only because I want to ensure that the reducer is always first.
+
+When the service emits that the value has changed or it sends the current form state upon connection, we have to respond accordingly. We are already mapping the socket event to an action in both cases, now we just need an effect that updates the form locally for each client.
+
+```typescript
+// apps/web-client/src/app/core/effects/value-patched.effect.ts
+import { Action } from '../actions';
+import { Observable, asyncScheduler } from 'rxjs';
+import { observeOn, filter, tap } from 'rxjs/operators';
+import { ActionTypes } from '@realtime-form/api-interfaces';
+import { FormGroup } from '@angular/forms';
+
+export const getValuePatchedEffect = (
+  form: FormGroup,
+  actions: Observable<Action>
+) => {
+  return actions.pipe(
+    observeOn(asyncScheduler),
+    filter(
+      action =>
+        action.type === ActionTypes.ValuePatched ||
+        action.type === ActionTypes.Data
+    ),
+    tap(action => form.patchValue(action.payload, { emitEvent: false }))
+  );
+};
+```
+
+And finally, whenever a client interacts with the form we want to emit a message to the service that will propagate this change across all the connected clients.
+
+```typescript
+// apps/web-client/src/app/core/effects/form-changes.effect.ts
+import { Action, PatchValue } from '../actions';
+import { merge, BehaviorSubject } from 'rxjs';
+import { debounceTime, map, tap } from 'rxjs/operators';
+import { FormGroup } from '@angular/forms';
+import { FormData } from '@realtime-form/api-interfaces';
+
+export const getFormChangesEffect = (
+  form: FormGroup,
+  dispatcher: BehaviorSubject<Action>
+) => {
+  const title$ = form
+    .get('title')
+    .valueChanges.pipe(map((title: string) => ({ title })));
+
+  const description$ = form
+    .get('description')
+    .valueChanges.pipe(map((description: string) => ({ description })));
+
+  return merge(title$, description$).pipe(
+    debounceTime(300),
+    tap((payload: Partial<FormData>) =>
+      dispatcher.next(new PatchValue(payload))
+    )
+  );
+};
+```
+
+You probably noticed a new `PatchValue` action, so let's create it:
+
+```typescript
+// apps/web-client/src/app/core/actions/patch-value.action.ts
+import { ActionTypes, FormData } from '@realtime-form/api-interfaces';
+
+export class PatchValue {
+  type = ActionTypes.PatchValue;
+
+  constructor(public payload: Partial<FormData>) {}
+}
+```
+
+And also update the barrel import:
+
+```typescript
+// apps/web-client/src/app/core/actions/index.ts
+import { Init } from './init.action';
+import { Data } from './data.action';
+import { ClientConnected } from './client-connected.action';
+import { ValuePatched } from './value-patched.action';
+import { PatchValue } from './patch-value.action';
+
+export type Action = Init | Data | ClientConnected | ValuePatched | PatchValue;
+export { Init, Data, ClientConnected, ValuePatched, PatchValue };
+```
+
+Since I love barrel imports I created another one for the effects:
+
+```typescript
+// apps/web-client/src/app/core/effects/index.ts
+export { getFormChangesEffect } from './form-changes.effect';
+export { getPatchValueEffect } from './patch-value.effect';
+export { getValuePatchedEffect } from './value-patched.effect';
+```
+
+Now you just have to run the services, one in a different terminal while in the main directory of the application:
+
+- ng serve
+- ng serve api
+
+## Conclusion
+
+And that was it. The first time I had to do this was really challenging, so I tried to be as explicit as I could with each step, hoping you don't get lost. As I mentioned before this is not a production ready implementation but a really good point of start. Now that you know how to solve this problem, don't forget that sometimes the solution can be worst and in some cases this could increase infrastructure costs.
