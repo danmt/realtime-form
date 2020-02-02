@@ -1,0 +1,26 @@
+<header>
+  <h1>Realtime Form</h1>
+</header>
+
+<main>
+  <form [formGroup]="form">
+    <fieldset>
+      <label class="form-control">
+        <span>Title: </span>
+        <input formControlName="title" />
+      </label>
+
+      <label class="form-control">
+        <span>Description: </span>
+        <textarea formControlName="description" rows="5"></textarea>
+      </label>
+    </fieldset>
+  </form>
+
+  <ng-container *ngIf="connectedClients$ | async as clients">
+    <h2>Clients ({{ clients.length }})</h2>
+    <ul>
+      <li *ngFor="let client of clients">{{ client }}</li>
+    </ul>
+  </ng-container>
+</main>

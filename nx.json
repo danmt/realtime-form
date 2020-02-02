@@ -21,7 +21,14 @@
     "api": {
       "tags": []
     },
-    "api-interfaces": {
+    "web-client": {
+      "tags": []
+    },
+    "web-client-e2e": {
+      "tags": [],
+      "implicitDependencies": ["web-client"]
+    },
+    "data": {
       "tags": []
     }
   }
