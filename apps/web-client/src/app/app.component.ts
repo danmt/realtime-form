@@ -4,6 +4,7 @@ import { scan, map } from 'rxjs/operators';
 import { FormBuilder } from '@angular/forms';
 import { Socket } from 'ngx-socket-io';
 
+import { ActionTypes, FormData } from '@realtime-form/data';
 import { State, reducer } from './core/state';
 import {
   ClientConnected,
@@ -12,7 +13,6 @@ import {
   Action,
   Init
 } from './core/actions';
-import { ActionTypes, FormData } from '@realtime-form/data';
 import {
   getPatchValueEffect,
   getValuePatchedEffect,
@@ -25,15 +25,19 @@ import {
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
-  dispatcher = new BehaviorSubject<Action>(new Init());
+  private dispatcher = new BehaviorSubject<Action>(new Init());
   actions$ = this.dispatcher.asObservable();
   store$ = this.actions$.pipe(
     scan((state: State, action: Action) => reducer(state, action))
   );
-  connectedClients$ = this.store$.pipe(map(state => state.connectedClients));
-  data$ = this.store$.pipe(map(state => state.data));
-  title$ = this.data$.pipe(map(state => state.title));
-  description$ = this.data$.pipe(map(state => state.description));
+  connectedClients$ = this.store$.pipe(
+    map((state: State) => state.connectedClients)
+  );
+  data$ = this.store$.pipe(map((state: State) => state.data));
+  title$ = this.data$.pipe(map((state: Partial<FormData>) => state.title));
+  description$ = this.data$.pipe(
+    map((state: Partial<FormData>) => state.description)
+  );
   form = this.fb.group({
     title: [''],
     description: ['']

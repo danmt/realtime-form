@@ -6,7 +6,7 @@ import { initialState } from './initial-state.const';
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case ActionTypes.Init:
-      return initialState;
+      return { ...initialState };
     case ActionTypes.ClientConnected:
       return {
         ...state,
