@@ -1,6 +1,6 @@
 # Multiple Users using the same Form in Real Time. Nx, NestJs and Angular
 
-In this article I wanted to explore something Ive been asked to build several times for different use cases. With distributed and remote teams, real time cooperation is key for success. Whenever we hear about Real Time application we always see the same example, a Chat. Although chats and cool and important, there's a simpler thing that can help teams maximize cooperation, forms that can be editted by multiple users **AT THE SAME TIME**.
+In this article I wanted to explore something I've been asked to build several times for different use cases. With distributed and remote teams, real time cooperation is key for success. Whenever we hear about Real Time applications we always see the same example, a Chat. Although chats and cool and important, there's a simpler thing that can help teams maximize cooperation, forms that can be edited by multiple users **AT THE SAME TIME**.
 
 It seems challenging, and of course, depending on the use case it can be harder and more _expensive_. It can get expensive simply because it means more data being sent back and forward. If your application is running on a VPS or a dedicated server you may be able to do this without any extra expenses, but if you are doing serverless this means more money you'll spend at the end of the month.
 
@@ -14,23 +14,23 @@ Let's say you have multiple users that have to work together towards a goal, you
 
 ## The Solution
 
-There should be a service responsible of tracking the current state of the task and sending updates to all the connected clients. The Web Client that will be used by the clients, should display the connected clients and a form that can be changed by user interaction or by updates coming from the service.
+There should be a service responsible for tracking the current state of the task and sending updates to all the connected clients. The Web Client that will be used by the clients, should display the connected clients and a form that can be changed by user interaction or by updates coming from the service.
 
-Since there's big chance of concurrency, we have to choose a strategy that helps us with that. I'm personally a fan of Redux, so I based my implementation on it but adjusted it according to my needs. Since this is a very small app, I used pure RxJs for my state management implementation. The actions that can occur are:
+Since there's a big chance of concurrency, we have to choose a strategy that helps us with that. I'm personally a fan of Redux, so I based my implementation on it but adjusted it according to my needs. Since this is a very small app, I used pure RxJs for my state management implementation. The actions that can occur are:
 
 - Init: It sets the initial state of the web client, its triggered when each client loads.
 - ClientConnected: Everytime a client connects to the service, all the clients receive an updated list of the currently connected clients.
 - Data: Whenever a client is connected, the service responds with the current form state.
 - PatchValue: When a client updates the form by directly interacting with it, it sends the changes to the service.
-- ValuePatched: When the service recevies a change to the state, it broadcasts it to all the other clients.
+- ValuePatched: When the service receives a change to the state, it broadcasts it to all the other clients.
 
 For this sample the form data is very simple and it only consists of a title and description, both of type string.
 
 ## Implementation
 
-First thing is to choose the technologies we want to use. I'm a proud Angular Developer, so I choose to use Angular for the Web Client. Since NestJs is so cool, I decided to use it for the service responsible of synchronization. Finally since the Web Client and the service are going to be communicating in real time, Nx can be really helpful to reduce duplication and ensure the messages passing through are type safe using shared interfaces.
+First thing is to choose the technologies we want to use. I'm a proud Angular Developer, so I choose to use Angular for the Web Client. Since NestJs is so cool, I decided to use it for the service responsible for synchronization. Finally since the Web Client and the service are going to be communicating in real time, Nx can be really helpful to reduce duplication and ensure the messages passing through are type safe using shared interfaces.
 
-> NOTE: For the Web Client you can use any JS framework or even plain Javascript. Same thing with the service, you can use Node or what ever you want as long as you have a Socket.IO implementation. I used Nx just because I like it but you can also skip that part.
+> NOTE: For the Web Client you can use any JS framework or even plain Javascript. Same thing with the service, you can use Node or whatever you want as long as you have a Socket.IO implementation. I used Nx just because I like it but you can also skip that part.
 
 We'll start by generating the Nx workspace.
 
@@ -40,7 +40,7 @@ We'll start by generating the Nx workspace.
 - Select your preferred stylesheet format (I always use SASS)
 - Go to the `realtime-form` directory
 
-One of the cool things of using Nx with NestJs and Angular is the possibility to share things between them. Let's take advantage of it and create our Form's state interface and Action types enum.
+One of the cool things about using Nx with NestJs and Angular is the possibility to share things between them. Let's take advantage of it and create our Form's state interface and Action types enum.
 
 Go to `/libs/api-interfaces/src/lib/api-interfaces.ts` and change its content to this:
 
@@ -63,6 +63,8 @@ Now we are able to use them from the service and the web client, since its share
 
 We're going to start with the service:
 
+- Run `npm i --save @nestjs/websockets @nestjs/platform-socket.io`
+- Run `npm i --save-dev @types/socket.io`
 - Go to the directory `/apps/api/src/app`
 - Create a new directory called `events` and move to that directory
 - Create a file named `events.gateway.ts`
@@ -81,7 +83,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 
-import { ActionTypes, FormData } from '@realtime-form/data';
+import { ActionTypes, FormData } from '@realtime-form/api-interfaces';
 
 @WebSocketGateway()
 export class EventsGateway {
@@ -121,9 +123,9 @@ export class EventsGateway {
 
 If you are scratching your head with that code snippet, don't worry, we are trusting NestJs to do all the heavy lifting. You can think of each method as the response to an event; connection, disconnection and patch value.
 
-- Connection: Update the list of connected clients, log to the service the event ocurred, emit the new connectedClients list to all the currently connected clients and emit to the client the current state of the form.
-- Disconnection: Update the list of connected clients, log to the service the event ocurred, emit the new connectedClients list to all the currently connected clients.
-- PatchValue: Update the current state of the form, log to the service the event ocurred, broadcast the new state to all the currently connected clients.
+- Connection: Update the list of connected clients, log to the service the event occurred, emit the new connectedClients list to all the currently connected clients and emit to the client the current state of the form.
+- Disconnection: Update the list of connected clients, log to the service the event occurred, emit the new connectedClients list to all the currently connected clients.
+- PatchValue: Update the current state of the form, log to the service the event occurred, broadcast the new state to all the currently connected clients.
 
 > NOTE: The difference between this.server.emit and client.broadcast.emit, is that the first sends the message to all the clients while the second sends the message to all _BUT the sender_.
 
@@ -151,7 +153,22 @@ import { EventsModule } from './events/events.module';
 export class AppModule {}
 ```
 
-I also removed the `AppController` and `AppService` files.
+I also removed the `AppController` and `AppService` files. And also updated the `apps/api/src/main.ts` file with this:
+
+```typescript
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app/app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  const port = 3000;
+  await app.listen(port, () => {
+    console.log('Listening at http://localhost:' + port);
+  });
+}
+
+bootstrap();
+```
 
 Now it's time to get started with the web client, go to `apps/web-client/src/app/app.component.html`:
 
@@ -182,6 +199,57 @@ Now it's time to get started with the web client, go to `apps/web-client/src/app
     </ul>
   </ng-container>
 </main>
+```
+
+Just to make sure it looks just like what I showed at the beginning, Go to `/apps/web-client/src/app/app.component.scss` and replace its content with this:
+
+```scss
+form {
+  width: 100%;
+  padding: 0.5rem;
+  max-width: 600px;
+
+  .form-control {
+    display: flex;
+    margin-bottom: 1rem;
+
+    & > span {
+      flex-basis: 20%;
+    }
+
+    & > input,
+    & > textarea {
+      flex-grow: 1;
+    }
+  }
+}
+```
+
+Install the Socket IO package for Angular by using the command `npm install --save ngx-socket-io`
+
+Don't forget to inject `ReactiveFormsModule` and `SocketIoModule` in the `AppModule` of the Web Client. Go to `/apps/web-client/src/app/app.module.ts`:
+
+```typescript
+import { BrowserModule } from '@angular/platform-browser';
+import { NgModule } from '@angular/core';
+import { ReactiveFormsModule } from '@angular/forms';
+
+import { AppComponent } from './app.component';
+
+import { SocketIoModule, SocketIoConfig } from 'ngx-socket-io';
+
+const config: SocketIoConfig = {
+  url: 'http://192.168.1.2:3000',
+  options: {}
+};
+
+@NgModule({
+  declarations: [AppComponent],
+  imports: [BrowserModule, ReactiveFormsModule, SocketIoModule.forRoot(config)],
+  providers: [],
+  bootstrap: [AppComponent]
+})
+export class AppModule {}
 ```
 
 Next go to `apps/web-client/src/app/app.component.ts`:
@@ -291,7 +359,7 @@ export { Init };
 
 ### 2: State stream
 
-By using the scan operator we can take every emission of an observable, keep an internal state that gets updated by the return of its callback. With a reducer function that takes a state and action, and returns a state in a inmutable way we can have a stream of the current state in a safer way.
+By using the scan operator we can take every emission of an observable, keep an internal state that gets updated by the return of its callback. With a reducer function that takes a state and action, and returns a state in an inmutable way we can have a stream of the current state in a safer way.
 
 I created a reducer that looks like this:
 
@@ -352,7 +420,7 @@ export const initialState = {
 } as State;
 ```
 
-I also created a barrel import here, I kinda love those.
+I also created a barrel import here, I kinda love them.
 
 ```typescript
 export { initialState } from './initial-state.const';
@@ -546,4 +614,4 @@ Now you just have to run the services, one in a different terminal while in the 
 
 ## Conclusion
 
-And that was it. The first time I had to do this was really challenging, so I tried to be as explicit as I could with each step, hoping you don't get lost. As I mentioned before this is not a production ready implementation but a really good point of start. Now that you know how to solve this problem, don't forget that sometimes the solution can be worst and in some cases this could increase infrastructure costs.
+And that was it. The first time I had to do this was really challenging, so I tried to be as explicit as I could with each step, hoping you don't get lost. As I mentioned before this is not a production ready implementation but a really good point of start. Now that you know how to solve this problem, don't forget that sometimes the solution can be worse and in some cases this could increase infrastructure costs.
