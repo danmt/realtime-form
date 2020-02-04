@@ -1,130 +1,6 @@
 {
   "version": 1,
   "projects": {
-    "realtime-form": {
-      "projectType": "application",
-      "schematics": {
-        "@nrwl/angular:component": {
-          "style": "scss"
-        }
-      },
-      "root": "apps/realtime-form",
-      "sourceRoot": "apps/realtime-form/src",
-      "prefix": "realtime-form",
-      "architect": {
-        "build": {
-          "builder": "@angular-devkit/build-angular:browser",
-          "options": {
-            "outputPath": "dist/apps/realtime-form",
-            "index": "apps/realtime-form/src/index.html",
-            "main": "apps/realtime-form/src/main.ts",
-            "polyfills": "apps/realtime-form/src/polyfills.ts",
-            "tsConfig": "apps/realtime-form/tsconfig.app.json",
-            "aot": false,
-            "assets": [
-              "apps/realtime-form/src/favicon.ico",
-              "apps/realtime-form/src/assets"
-            ],
-            "styles": ["apps/realtime-form/src/styles.scss"],
-            "scripts": []
-          },
-          "configurations": {
-            "production": {
-              "fileReplacements": [
-                {
-                  "replace": "apps/realtime-form/src/environments/environment.ts",
-                  "with": "apps/realtime-form/src/environments/environment.prod.ts"
-                }
-              ],
-              "optimization": true,
-              "outputHashing": "all",
-              "sourceMap": false,
-              "extractCss": true,
-              "namedChunks": false,
-              "aot": true,
-              "extractLicenses": true,
-              "vendorChunk": false,
-              "buildOptimizer": true,
-              "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "2mb",
-                  "maximumError": "5mb"
-                },
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "6kb",
-                  "maximumError": "10kb"
-                }
-              ]
-            }
-          }
-        },
-        "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
-          "options": {
-            "browserTarget": "realtime-form:build",
-            "proxyConfig": "apps/realtime-form/proxy.conf.json"
-          },
-          "configurations": {
-            "production": {
-              "browserTarget": "realtime-form:build:production"
-            }
-          }
-        },
-        "extract-i18n": {
-          "builder": "@angular-devkit/build-angular:extract-i18n",
-          "options": {
-            "browserTarget": "realtime-form:build"
-          }
-        },
-        "lint": {
-          "builder": "@angular-devkit/build-angular:tslint",
-          "options": {
-            "tsConfig": [
-              "apps/realtime-form/tsconfig.app.json",
-              "apps/realtime-form/tsconfig.spec.json"
-            ],
-            "exclude": ["**/node_modules/**", "!apps/realtime-form/**"]
-          }
-        },
-        "test": {
-          "builder": "@nrwl/jest:jest",
-          "options": {
-            "jestConfig": "apps/realtime-form/jest.config.js",
-            "tsConfig": "apps/realtime-form/tsconfig.spec.json",
-            "setupFile": "apps/realtime-form/src/test-setup.ts"
-          }
-        }
-      }
-    },
-    "realtime-form-e2e": {
-      "root": "apps/realtime-form-e2e",
-      "sourceRoot": "apps/realtime-form-e2e/src",
-      "projectType": "application",
-      "architect": {
-        "e2e": {
-          "builder": "@nrwl/cypress:cypress",
-          "options": {
-            "cypressConfig": "apps/realtime-form-e2e/cypress.json",
-            "tsConfig": "apps/realtime-form-e2e/tsconfig.e2e.json",
-            "devServerTarget": "realtime-form:serve"
-          },
-          "configurations": {
-            "production": {
-              "devServerTarget": "realtime-form:serve:production"
-            }
-          }
-        },
-        "lint": {
-          "builder": "@angular-devkit/build-angular:tslint",
-          "options": {
-            "tsConfig": ["apps/realtime-form-e2e/tsconfig.e2e.json"],
-            "exclude": ["**/node_modules/**", "!apps/realtime-form-e2e/**"]
-          }
-        }
-      }
-    },
     "api": {
       "root": "apps/api",
       "sourceRoot": "apps/api/src",
@@ -179,9 +55,133 @@
         }
       }
     },
-    "api-interfaces": {
-      "root": "libs/api-interfaces",
-      "sourceRoot": "libs/api-interfaces/src",
+    "web-client": {
+      "projectType": "application",
+      "schematics": {
+        "@nrwl/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "apps/web-client",
+      "sourceRoot": "apps/web-client/src",
+      "prefix": "realtime-form",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:browser",
+          "options": {
+            "outputPath": "dist/apps/web-client",
+            "index": "apps/web-client/src/index.html",
+            "main": "apps/web-client/src/main.ts",
+            "polyfills": "apps/web-client/src/polyfills.ts",
+            "tsConfig": "apps/web-client/tsconfig.app.json",
+            "aot": false,
+            "assets": [
+              "apps/web-client/src/favicon.ico",
+              "apps/web-client/src/assets"
+            ],
+            "styles": ["apps/web-client/src/styles.scss"],
+            "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "fileReplacements": [
+                {
+                  "replace": "apps/web-client/src/environments/environment.ts",
+                  "with": "apps/web-client/src/environments/environment.prod.ts"
+                }
+              ],
+              "optimization": true,
+              "outputHashing": "all",
+              "sourceMap": false,
+              "extractCss": true,
+              "namedChunks": false,
+              "aot": true,
+              "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": true,
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "2mb",
+                  "maximumError": "5mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "6kb",
+                  "maximumError": "10kb"
+                }
+              ]
+            }
+          }
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "browserTarget": "web-client:build",
+            "proxyConfig": "apps/web-client/proxy.conf.json"
+          },
+          "configurations": {
+            "production": {
+              "browserTarget": "web-client:build:production"
+            }
+          }
+        },
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n",
+          "options": {
+            "browserTarget": "web-client:build"
+          }
+        },
+        "lint": {
+          "builder": "@angular-devkit/build-angular:tslint",
+          "options": {
+            "tsConfig": [
+              "apps/web-client/tsconfig.app.json",
+              "apps/web-client/tsconfig.spec.json"
+            ],
+            "exclude": ["**/node_modules/**", "!apps/web-client/**"]
+          }
+        },
+        "test": {
+          "builder": "@nrwl/jest:jest",
+          "options": {
+            "jestConfig": "apps/web-client/jest.config.js",
+            "tsConfig": "apps/web-client/tsconfig.spec.json",
+            "setupFile": "apps/web-client/src/test-setup.ts"
+          }
+        }
+      }
+    },
+    "web-client-e2e": {
+      "root": "apps/web-client-e2e",
+      "sourceRoot": "apps/web-client-e2e/src",
+      "projectType": "application",
+      "architect": {
+        "e2e": {
+          "builder": "@nrwl/cypress:cypress",
+          "options": {
+            "cypressConfig": "apps/web-client-e2e/cypress.json",
+            "tsConfig": "apps/web-client-e2e/tsconfig.e2e.json",
+            "devServerTarget": "web-client:serve"
+          },
+          "configurations": {
+            "production": {
+              "devServerTarget": "web-client:serve:production"
+            }
+          }
+        },
+        "lint": {
+          "builder": "@angular-devkit/build-angular:tslint",
+          "options": {
+            "tsConfig": ["apps/web-client-e2e/tsconfig.e2e.json"],
+            "exclude": ["**/node_modules/**", "!apps/web-client-e2e/**"]
+          }
+        }
+      }
+    },
+    "data": {
+      "root": "libs/data",
+      "sourceRoot": "libs/data/src",
       "projectType": "library",
       "schematics": {},
       "architect": {
@@ -189,17 +189,17 @@
           "builder": "@angular-devkit/build-angular:tslint",
           "options": {
             "tsConfig": [
-              "libs/api-interfaces/tsconfig.lib.json",
-              "libs/api-interfaces/tsconfig.spec.json"
+              "libs/data/tsconfig.lib.json",
+              "libs/data/tsconfig.spec.json"
             ],
-            "exclude": ["**/node_modules/**", "!libs/api-interfaces/**"]
+            "exclude": ["**/node_modules/**", "!libs/data/**"]
           }
         },
         "test": {
           "builder": "@nrwl/jest:jest",
           "options": {
-            "jestConfig": "libs/api-interfaces/jest.config.js",
-            "tsConfig": "libs/api-interfaces/tsconfig.spec.json"
+            "jestConfig": "libs/data/jest.config.js",
+            "tsConfig": "libs/data/tsconfig.spec.json"
           }
         }
       }
@@ -217,5 +217,5 @@
       "unitTestRunner": "jest"
     }
   },
-  "defaultProject": "realtime-form"
+  "defaultProject": "web-client"
 }
