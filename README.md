@@ -1,6 +1,8 @@
 # Multiple Users using the same Form in Real Time. Nx, NestJs and Angular
 
-In this article I wanted to explore something I've been asked to build several times for different use cases. With distributed and remote teams, real time cooperation is key for success. Whenever we hear about Real Time applications we always see the same example, a Chat. Although chats and cool and important, there's a simpler thing that can help teams maximize cooperation, forms that can be edited by multiple users **AT THE SAME TIME**.
+![Visual representation of the end product](https://dev-to-uploads.s3.amazonaws.com/i/ni2wsrw1w23zsr6n6zcj.gif)
+
+In this article I wanted to explore something I've been asked to build several times for different use cases. With distributed and remote teams, real time cooperation is key for success. Whenever we hear about Real Time applications we always see the same example, a Chat. Although chats and cool and important, there's a simpler thing that can help teams maximize cooperation, forms that can be edited by multiple users concurrently.
 
 It seems challenging, and of course, depending on the use case it can be harder and more _expensive_. It can get expensive simply because it means more data being sent back and forward. If your application is running on a VPS or a dedicated server you may be able to do this without any extra expenses, but if you are doing serverless this means more money you'll spend at the end of the month.
 
@@ -607,11 +609,13 @@ export { getPatchValueEffect } from './patch-value.effect';
 export { getValuePatchedEffect } from './value-patched.effect';
 ```
 
-Now you just have to run the services, one in a different terminal while in the main directory of the application:
+Now you just have to run the services, each in a different terminal while in the main directory of the application:
 
-- ng serve
-- ng serve api
+- Run the command `ng serve`
+- Run the command `ng serve api`
 
 ## Conclusion
 
 And that was it. The first time I had to do this was really challenging, so I tried to be as explicit as I could with each step, hoping you don't get lost. As I mentioned before this is not a production ready implementation but a really good point of start. Now that you know how to solve this problem, don't forget that sometimes the solution can be worse and in some cases this could increase infrastructure costs.
+
+Icons made by [itim2101](https://www.flaticon.com/authors/itim2101) from [Flaticon](https://www.flaticon.com)
